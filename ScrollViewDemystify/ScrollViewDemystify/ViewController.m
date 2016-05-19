@@ -17,8 +17,8 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     // Do any additional setup after loading the view, typically from a nib.
-    CustomScrollView* view = [[CustomScrollView alloc]initWithFrame:CGRectMake(0, 0, 320, 300)];
-    view.backgroundColor = [UIColor purpleColor];
+    CustomScrollView* view = [[CustomScrollView alloc]initWithFrame:CGRectMake(0, 20, 320, 300)];
+    view.backgroundColor = [UIColor blueColor];
     view.contentSize = CGSizeMake(320, 600);
     view.layer.masksToBounds = YES;
     [self.view addSubview:view];
@@ -26,6 +26,7 @@
     for (int i = 0 ; i < 10; i ++) {
         UILabel* label  = [[UILabel alloc] initWithFrame:CGRectMake(50, i * 50, 70, 20)];
         label.text = [NSString stringWithFormat:@"Label_%d",i];
+        label.textColor = [UIColor whiteColor];
         [view addSubview:label];
     }
 }

@@ -11,7 +11,7 @@
 
 static CGFloat rubberBandDistance(CGFloat offset, CGFloat dimension) {
 
-    const CGFloat constant = 0.55f;
+    const CGFloat constant = 0.35f;
     CGFloat result = (constant * abs(offset) * dimension) / (dimension + constant * abs(offset));
     // The algorithm expects a positive offset, so we have to negate the result if the offset was negative.
     return offset < 0.0f ? -result : result;
@@ -25,6 +25,7 @@ static CGFloat rubberBandDistance(CGFloat offset, CGFloat dimension) {
 @property(nonatomic,strong) DynamicBounce* bounceObject;
 @property(nonatomic, strong) UIDynamicAnimator* animator;
 @property(nonatomic,strong) UIDynamicItemBehavior* behavior;
+@property(nonatomic,strong) UIAttachmentBehavior* spring;
 @property(nonatomic,readonly) CGPoint maxOrigin;
 @property(nonatomic,readonly) CGPoint minOrigin;
 
@@ -58,15 +59,43 @@ static CGFloat rubberBandDistance(CGFloat offset, CGFloat dimension) {
     [self addGestureRecognizer:_gr];
 
     self.bounceObject = [[DynamicBounce alloc]init];
-    self.animator = [[UIDynamicAnimator alloc]init];
+    self.animator = [[UIDynamicAnimator alloc]initWithReferenceView:self];
 }
 
 
 -(void)setContentOffset:(CGPoint)contentOffset{
     CGRect bounds = self.bounds;
+
     bounds.origin.x = contentOffset.x;
     bounds.origin.y = contentOffset.y;
     [self setBounds:bounds];
+
+    BOOL outOfBounds = contentOffset.x < self.minOrigin.x || contentOffset.x > self.maxOrigin.x ||
+    contentOffset.y < self.minOrigin.y || self.contentOffset.y > self.maxOrigin.y;
+
+    /*
+     behavior必须存在，因为只有动作结束之后才存在这个效果
+     spring不能存在，因为spring代表这个效果已经被激活了，无需再次激活
+     */
+    if(outOfBounds && self.behavior && !self.spring){
+        CGPoint target = bounds.origin;
+        if(bounds.origin.y < self.minOrigin.y){
+            target.y = self.minOrigin.y;
+        }else if (bounds.origin.y > self.maxOrigin.y){
+            target.y = self.maxOrigin.y;
+        }
+
+
+        UIAttachmentBehavior* springBehavior = [[UIAttachmentBehavior alloc]initWithItem:self.bounceObject attachedToAnchor:target];
+        springBehavior.length = 0;
+        springBehavior.damping = 1;
+        springBehavior.frequency = 2;
+
+        [self.animator addBehavior:springBehavior];
+        self.spring = springBehavior;
+    }
+
+
 }
 
 -(CGPoint)contentOffset{
@@ -112,7 +141,7 @@ static CGFloat rubberBandDistance(CGFloat offset, CGFloat dimension) {
         beh.action = ^{
             CGRect bounds = self.bounds;
             bounds.origin = weakSelf.bounceObject.center;
-            self.bounds = bounds;
+            self.contentOffset = weakSelf.bounceObject.center;
         };
 
         [self.animator addBehavior:beh];
@@ -120,10 +149,14 @@ static CGFloat rubberBandDistance(CGFloat offset, CGFloat dimension) {
     }else if(gestureRecognizer.state == UIGestureRecognizerStateBegan){
         [self.animator removeAllBehaviors];
         self.startBounds = self.bounds;
+        self.spring = nil;
+        self.behavior = nil;
+        self.lastPanOffset = panOffset;
     }else{
         CGPoint offset = self.contentOffset;
         offset.y -= realOffset.y;
 
+        CGFloat realBoundsOffsetY = self.contentOffset.y - panOffset.y;
 
         CGFloat minOffsetX = 0;
         CGFloat minOffsetY = 0;
@@ -136,7 +169,7 @@ static CGFloat rubberBandDistance(CGFloat offset, CGFloat dimension) {
 
         CGFloat validOriginY = fmin(offset.y,maxOffsetY);
         validOriginY = fmax(validOriginY,minOffsetY);
-        CGFloat bounceY = rubberBandDistance(-(validOriginY + panOffset.y), CGRectGetHeight(self.bounds));
+        CGFloat bounceY = rubberBandDistance(-(validOriginY - realBoundsOffsetY), CGRectGetHeight(self.bounds));
 
         CGPoint finalOffset = CGPointMake(validOriginX, validOriginY + bounceY);
 
