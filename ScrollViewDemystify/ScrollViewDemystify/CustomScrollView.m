@@ -169,7 +169,7 @@ static CGFloat rubberBandDistance(CGFloat offset, CGFloat dimension) {
 
         CGFloat validOriginY = fmin(offset.y,maxOffsetY);
         validOriginY = fmax(validOriginY,minOffsetY);
-        CGFloat bounceY = rubberBandDistance(-(validOriginY - realBoundsOffsetY), CGRectGetHeight(self.bounds));
+        CGFloat bounceY = rubberBandDistance(realBoundsOffsetY - validOriginY, CGRectGetHeight(self.bounds));
 
         CGPoint finalOffset = CGPointMake(validOriginX, validOriginY + bounceY);
 
